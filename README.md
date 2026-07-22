@@ -21,6 +21,8 @@ the standard structure used across our projects:
 
 ## Usage
 
+### New project (creates a fresh folder)
+
 ```bash
 # With uv (no install needed)
 uvx cookiecutter path/to/cookiecutter-databricks-ml-pipeline
@@ -29,6 +31,24 @@ uvx cookiecutter path/to/cookiecutter-databricks-ml-pipeline
 pip install cookiecutter
 cookiecutter path/to/cookiecutter-databricks-ml-pipeline
 ```
+
+### Into an existing (cloned) repo
+
+Cookiecutter always generates a `<project_slug>/` folder — it cannot flatten its
+output into the current directory. To fill an empty repo you just cloned from
+Azure DevOps, generate into the **parent** directory with the slug set to the
+repo folder's exact name, and `-f` to allow writing into the existing folder:
+
+```bash
+cd path/to/my-cloned-repo
+uvx cookiecutter path/to/cookiecutter-databricks-ml-pipeline -o .. -f project_slug=my-cloned-repo
+```
+
+The generated files land directly inside `my-cloned-repo/` and your `.git`
+folder is left untouched. Hyphens in the repo name are fine: `package_name` is
+sanitized independently (`my-cloned-repo` → package `my_cloned_repo`), and the
+places that use `project_slug` (pyproject name, bundle name, experiment names)
+all accept hyphens. Skip `git init` in the post-generation steps.
 
 You will be prompted for:
 
@@ -48,7 +68,7 @@ You will be prompted for:
 
 ```bash
 cd <project_slug>
-git init
+git init   # skip if you generated into an existing cloned repo
 uv sync --extra dev --link-mode=copy   # --link-mode=copy avoids symlink issues on Windows/OneDrive
 pre-commit install
 databricks bundle validate --target dev

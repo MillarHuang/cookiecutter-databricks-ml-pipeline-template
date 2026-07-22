@@ -6,9 +6,8 @@ print(
     f"""
 Project '{PROJECT}' generated successfully!
 
-Next steps:
-  cd {PROJECT}
-  git init
+Next steps (run inside the project folder):
+  git init                    # skip if you generated into an existing cloned repo
   uv sync --extra dev --link-mode=copy
   pre-commit install
   databricks bundle validate --target dev

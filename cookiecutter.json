@@ -1,7 +1,7 @@
 {
   "project_name": "My Databricks Project",
   "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_').replace('-', '_') }}",
-  "package_name": "{{ cookiecutter.project_slug }}",
+  "package_name": "{{ cookiecutter.project_slug.lower().replace(' ', '_').replace('-', '_') }}",
   "project_description": "A Databricks ML pipeline project",
   "databricks_host": "https://adb-2054093544300650.10.azuredatabricks.net",
   "notification_email": "z.huang@action.nl",
