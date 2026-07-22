@@ -1,0 +1,51 @@
+# CI Azure DevOps Pipeline
+
+name: CI
+
+trigger:
+  branches:
+    include:
+      - dev
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: PYTHON_VERSION
+    value: '{{ cookiecutter.python_version }}'
+
+jobs:
+  - job: CI
+    displayName: 'Pre-commit and Tests'
+    steps:
+      # Step 1: Download source code from the repository onto the virtual machine
+      - checkout: self
+        displayName: 'Checkout code'
+
+      # Step 2: Set up Python
+      - task: UsePythonVersion@0
+        displayName: 'Setup Python $(PYTHON_VERSION)'
+        inputs:
+          versionSpec: '$(PYTHON_VERSION)'
+          addToPath: true
+
+      # Step 3: Install uv
+      - script: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: 'Install uv'
+
+      # Step 4: Install dependencies with uv
+      - script: |
+          uv sync --extra test
+        displayName: 'Install dependencies'
+
+      # Step 5: Run pre-commit checks
+      - script: |
+          uv run pre-commit run --all-files
+        displayName: 'Run pre-commit checks'
+
+      # Step 6: Run unit tests with pytest
+      - script: |
+          uv run pytest -m "not ci_exclude"
+        displayName: 'Run unit tests with pytest'

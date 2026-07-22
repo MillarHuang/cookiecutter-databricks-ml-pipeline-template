@@ -1,0 +1,102 @@
+[project]
+name = "{{ cookiecutter.project_slug }}"
+description = "{{ cookiecutter.project_description }}"
+requires-python = ">={{ cookiecutter.python_version }}, <3.13"
+
+dependencies = [
+  "pip-system-certs==5.3", # Forces Python to use the corporate Windows system certificates to avoid SSLCertVerificationError when connecting to MLflow on Databricks.
+  "mlflow[databricks]>=3.1, <4",
+  "loguru>=0.7, <1",
+  "pandas>=2.2, <3",
+  "numpy>=2.0, <3",
+  "scikit-learn>=1.6, <2",
+  "pyyaml>=6.0, <7",
+  "pydantic>=2.0, <3",
+  "databricks-sdk>=0.60, <1",
+  "cookiecutter"
+]
+
+# Dynamic version of the project/package, read from version.txt (see setuptools below)
+dynamic = ['version']
+
+[tool.uv]
+allow-insecure-host = ["*"]
+
+# Private wheels: place them in libs/ and register them here, e.g.
+# [tool.uv.sources]
+# my-private-lib = { path = "libs/my_private_lib-1.0.0-py3-none-any.whl" }
+
+[project.optional-dependencies]
+# Optional packages: uv sync --extra dev
+dev = ["databricks-connect>=14.1, <15",
+       "ipykernel>=6.30, <7",
+       "pip>=25.0.1, <26",
+       "pre-commit>=4.1.0, <5"
+       ]
+
+# Testing must not use databricks-connect, therefore two separate extras
+test = ["pre-commit>=4.1.0, <5",
+       "pytest>=8.0.0, <9",
+       "pytest-cov>=5.0.0, <6",
+       "pyspark>=3.4.0, <4",
+       "pydantic-settings>=2.0.0"
+]
+
+# Needed to build a wheel out of the project
+[build-system]
+requires = [
+  "setuptools>=72.0"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["{{ cookiecutter.package_name }}*"] # package name, must equal the folder name in src/
+
+
+[tool.setuptools.dynamic]
+version = { file = "version.txt" }
+
+# Used for testing purposes in the CI/CD pipeline
+[tool.pytest.ini_options]
+testpaths = [ "tests" ]
+pythonpath = [ "." ]
+markers = [
+    "ci_exclude: Tests excluded from CI/CD pipeline"
+]
+addopts = [
+    "--cov=src",
+    "--cov-report=term",
+    "--cov-report=xml:coverage.xml"
+]
+
+# Checked on commit, together with .pre-commit-config.yaml
+[tool.ruff]
+line-length = 120
+lint.select = [
+    "F",    # pyflakes rules
+    "E",    # pycodestyle error rules
+    "W",    # pycodestyle warning rules
+    "B",    # flake8-bugbear rules
+    "I",    # isort rules
+    "UP",   # pyupgrade rules
+    "SIM",  # flake8-simplify rules
+    "ERA",  # eradicate rules
+    "C",    # pylint convention rules
+    "D",    # pydocstyle rules
+    "ANN"   # flake8-annotations rules
+]
+lint.ignore = [
+    "D107", # Missing docstring in `__init__`
+    "D203", # incorrect-blank-line-before-class
+    "D213", # multi-line-summary-second-line
+    "E501", # line-too-long
+    "C901", # too complex
+    "ERA001", # commented out code
+    "D100", # missing docstring
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+]
+
+[tool.ruff.format]
+indent-style = "space"
+docstring-code-format = true

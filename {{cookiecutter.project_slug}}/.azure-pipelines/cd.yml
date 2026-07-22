@@ -1,0 +1,161 @@
+# Azure DevOps Pipeline for Databricks Asset Bundles
+# Uses an Azure service connection to obtain a Databricks access token
+
+trigger:
+  branches:
+    include:
+      - prd
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: PYTHON_VERSION
+    value: '{{ cookiecutter.python_version }}'
+
+stages:
+  # ============================================
+  # STAGE 1: Deploy to Acceptance
+  # ============================================
+  - stage: DeployAcceptance
+    displayName: 'Deploy to Acceptance'
+
+    variables:
+      - group: databricks-acc-vars  # Contains: DATABRICKS_HOST
+
+    jobs:
+      - job: Deploy
+        displayName: 'Deploy to Acceptance'
+
+        steps:
+          # Checkout code
+          - checkout: self
+            displayName: 'Checkout Repository'
+
+          # Setup Python
+          - task: UsePythonVersion@0
+            displayName: 'Setup Python $(PYTHON_VERSION)'
+            inputs:
+              versionSpec: '$(PYTHON_VERSION)'
+
+          # Install uv
+          - script: |
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              echo "##vso[task.prependpath]$HOME/.local/bin"
+            displayName: 'Install uv'
+
+          # Install Databricks CLI
+          - script: |
+              pip install --upgrade pip
+              curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+            displayName: 'Install Databricks CLI'
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: MLOPS_acc
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Getting access token..."
+                DATABRICKS_TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query "accessToken" -o tsv)
+                echo "##vso[task.setvariable variable=DATABRICKS_TOKEN]$DATABRICKS_TOKEN"
+
+          # Validate bundle
+          - script: |
+              echo "Validating bundle for acceptance..."
+              databricks bundle validate -t acc
+            env:
+              DATABRICKS_HOST: $(DATABRICKS_HOST)
+              DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+            displayName: 'Validate Bundle'
+
+          # Deploy bundle
+          - script: |
+              echo "Deploying bundle to acceptance..."
+              databricks bundle deploy -t acc \
+                --var="git_sha=$(Build.SourceVersion)" \
+                --var="branch=$(Build.SourceBranchName)"
+            env:
+              DATABRICKS_HOST: $(DATABRICKS_HOST)
+              DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+            displayName: 'Deploy to Acceptance'
+
+  # ============================================
+  # STAGE 2: Deploy to Production
+  # ============================================
+  - stage: DeployProduction
+    displayName: 'Deploy to Production'
+    dependsOn: DeployAcceptance
+    condition: succeeded()  # Only run if Acc passed
+
+    variables:
+      - group: databricks-prod-vars  # Contains: DATABRICKS_HOST
+
+    jobs:
+      # Deployment job (instead of a normal job) allows referencing the Production environment,
+      # which is configured in Azure DevOps to require manual approval.
+      - deployment: DeployProdJob
+        displayName: 'Deploy to Production'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Checkout code
+                - checkout: self
+                  displayName: 'Checkout Repository'
+
+                # Setup Python
+                - task: UsePythonVersion@0
+                  displayName: 'Setup Python $(PYTHON_VERSION)'
+                  inputs:
+                    versionSpec: '$(PYTHON_VERSION)'
+
+                # Install uv
+                - script: |
+                    curl -LsSf https://astral.sh/uv/install.sh | sh
+                    echo "##vso[task.prependpath]$HOME/.local/bin"
+                  displayName: 'Install uv'
+
+                # Install Databricks CLI
+                - script: |
+                    pip install --upgrade pip
+                    curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+                  displayName: 'Install Databricks CLI'
+
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: MLOPS_prd
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      echo "Getting access token..."
+                      DATABRICKS_TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query "accessToken" -o tsv)
+                      echo "##vso[task.setvariable variable=DATABRICKS_TOKEN]$DATABRICKS_TOKEN"
+
+                # Validate bundle
+                - script: |
+                    echo "Validating bundle for production..."
+                    databricks bundle validate -t prd
+                  env:
+                    DATABRICKS_HOST: $(DATABRICKS_HOST)
+                    DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+                  displayName: 'Validate Bundle'
+
+                # Deploy bundle
+                - script: |
+                    echo "Deploying bundle to production..."
+                    databricks bundle deploy -t prd \
+                      --var="git_sha=$(Build.SourceVersion)" \
+                      --var="branch=$(Build.SourceBranchName)"
+                  env:
+                    DATABRICKS_HOST: $(DATABRICKS_HOST)
+                    DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+                  displayName: 'Deploy to Production'
+
+                # Deployment summary
+                - script: |
+                    echo "========================================"
+                    echo "Production Deployment Complete!"
+                    echo "========================================"
+                  displayName: 'Deployment Summary'

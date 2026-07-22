@@ -1,0 +1,32 @@
+# Single source of truth for all pipeline parameters.
+# Loaded and validated by ProjectConfig in src/{{ cookiecutter.package_name }}/config.py.
+
+# --- Environment-specific settings -------------------------------------------
+dev:
+  catalog_name: {{ cookiecutter.dev_catalog }}
+  schema_name: {{ cookiecutter.schema_name }}
+  experiment_name: /Shared/{{ cookiecutter.project_slug }}_dev
+  experiment_id: ""
+
+acc:
+  catalog_name: {{ cookiecutter.acc_catalog }}
+  schema_name: {{ cookiecutter.schema_name }}
+  experiment_name: /Shared/{{ cookiecutter.project_slug }}_acc
+  experiment_id: ""
+
+prd:
+  catalog_name: {{ cookiecutter.prd_catalog }}
+  schema_name: {{ cookiecutter.schema_name }}
+  experiment_name: /Shared/{{ cookiecutter.project_slug }}_prd
+  experiment_id: ""
+
+# --- Model configurations (one entry per sub-model) --------------------------
+models:
+  example_model:
+    num_cols:
+      - feature_1
+      - feature_2
+    cat_cols: []
+    target: target_column
+    model_type: linear_regression
+    parameters: {}

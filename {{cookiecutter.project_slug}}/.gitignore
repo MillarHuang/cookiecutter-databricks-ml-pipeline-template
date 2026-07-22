@@ -1,0 +1,64 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+mlruns/
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+.pytest_cache/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+notebooks/logs/
+notebooks/*.log
+notebooks/__pycache__/
+
+# Databricks
+.databricks
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# mypy / pyright / ruff
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+pyrightconfig.json
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Logs
+*.log
+logs/
+
+# Local data
+*.sqlite3
+data/
+*.xlsx
+*.csv
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# uv
+uv.lock

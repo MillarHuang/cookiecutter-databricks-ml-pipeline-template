@@ -1,0 +1,139 @@
+# Databricks Asset Bundle definition for {{ cookiecutter.project_name }}.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: {{ cookiecutter.project_slug }}
+
+include:
+  - resources/*.yml
+
+# Run uv build to build a wheel (.whl) file from the project and save in "dist/"
+artifacts:
+  default:
+    type: whl
+    build: uv build
+    path: .
+
+# Bundle variables
+variables:
+  git_sha:
+    description: git_sha
+    default: local
+  branch:
+    description: branch
+    default: dev
+  schedule_pause_status:
+    description: schedule pause status
+    default: PAUSED
+  is_test:
+    default: 0
+  env:
+    description: environment
+    default: dev
+
+# Main deployment job — one task per pipeline stage.
+resources:
+  jobs:
+    deployment:
+      name: ${bundle.name}-workflow
+      email_notifications:
+        on_failure:
+          - {{ cookiecutter.notification_email }}
+        on_success:
+          - {{ cookiecutter.notification_email }}
+      # Cron job scheduler
+      schedule:
+        quartz_cron_expression: "0 0 6 ? * WED" # every Wednesday at 06:00
+        timezone_id: "Europe/Amsterdam"
+        pause_status: ${var.schedule_pause_status}
+      tags:
+        project_name: ${bundle.name}
+
+      # Ephemeral job cluster
+      job_clusters:
+        - job_cluster_key: "{{ cookiecutter.project_slug }}-cluster"
+          new_cluster:
+            spark_version: "16.4.x-scala2.12"
+            data_security_mode: "SINGLE_USER" # lock the cluster so only one identity can use it; code runs with the job owner's permissions
+            node_type_id: "Standard_D16s_v3"
+            driver_node_type_id: "Standard_E32_v3"
+            autoscale:
+              min_workers: 2
+              max_workers: 8
+
+      # Tasks of the job (add per-stage / per-process tasks here)
+      tasks:
+        - task_key: "data_ingestion"
+          job_cluster_key: "{{ cookiecutter.project_slug }}-cluster"
+          spark_python_task:
+            python_file: "scripts/01.Data_ingestion.py"
+            parameters:
+              - "--root_path"
+              - "${workspace.root_path}" # Bundle variable: replaced at deploy time
+              - "--env"
+              - "${var.env}"
+          libraries:
+            # Add private wheels from libs/ here, e.g. - whl: ./libs/my_lib-1.0.0-py3-none-any.whl
+            - whl: ./dist/*.whl
+
+targets:
+  dev:
+    default: true
+    mode: development # iterative work; deploys to user-specific workspace paths
+    workspace:
+      host: {{ cookiecutter.databricks_host }}
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
+    permissions:
+      - level: CAN_MANAGE
+        user_name: {{ cookiecutter.notification_email }}
+    variables:
+      is_test: 0
+      env: dev
+    artifacts:
+      default:
+        type: whl
+        build: uv build
+        path: .
+        dynamic_version: True
+
+  test:
+    presets:
+      name_prefix: 'TEST_'
+    workspace:
+      host: {{ cookiecutter.databricks_host }}
+      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+    variables:
+      is_test: 1
+      env: dev
+
+  acc:
+    presets:
+      name_prefix: 'ACC_'
+    workspace:
+      host: {{ cookiecutter.databricks_host }}
+      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+    permissions:
+      # - level: CAN_MANAGE
+      #   service_principal_name: <acc-service-principal-id>
+      - level: CAN_MANAGE
+        user_name: {{ cookiecutter.notification_email }}
+    variables:
+      is_test: 1
+      env: acc
+
+  prd:
+    presets:
+      name_prefix: 'PRD_'
+    mode: production # stable, locked-down deployment; uses stable workspace locations
+    workspace:
+      host: {{ cookiecutter.databricks_host }}
+      root_path: /Shared/.bundle/${bundle.target}/${bundle.name}
+    permissions:
+      # - level: CAN_MANAGE
+      #   service_principal_name: <prd-service-principal-id>
+      - level: CAN_MANAGE
+        user_name: {{ cookiecutter.notification_email }}
+    variables:
+      schedule_pause_status: UNPAUSED
+      is_test: 0
+      env: prd
