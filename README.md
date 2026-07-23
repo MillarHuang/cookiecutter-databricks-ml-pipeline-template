@@ -40,6 +40,13 @@ Azure DevOps, generate into the **parent** directory with the slug set to the
 repo folder's exact name, and `-f` to allow writing into the existing folder:
 
 ```bash
+pip install cookiecutter
+cookiecutter "https://github.com/MillarHuang/cookiecutter-databricks-ml-pipeline-template.git" -o .. -f project_slug=Product_Tax_Classification
+```
+
+or 
+
+```bash
 cd path/to/my-cloned-repo
 uvx cookiecutter path/to/cookiecutter-databricks-ml-pipeline -o .. -f project_slug=my-cloned-repo
 ```
