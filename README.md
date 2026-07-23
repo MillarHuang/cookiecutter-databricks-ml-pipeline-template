@@ -39,9 +39,17 @@ output into the current directory. To fill an empty repo you just cloned from
 Azure DevOps, generate into the **parent** directory with the slug set to the
 repo folder's exact name, and `-f` to allow writing into the existing folder:
 
+First install cookiecutter and go to the repo folder location:
 ```bash
 pip install cookiecutter
-cookiecutter "https://github.com/MillarHuang/cookiecutter-databricks-ml-pipeline-template.git" -o .. -f project_slug=Product_Tax_Classification
+cd path\to\my-repo
+```
+Then use cookiecutter to generate the template (replacing `my-repo` with your actual repo folder name.)
+```bash
+# - -o .. — tells cookiecutter to put its output one level above your repo, in the parent folder.
+# - project_slug=my-repo — forces the generated folder's name to be identical to your repo folder's name.
+# - -f — permits writing into a folder that already exists instead of erroring.
+cookiecutter "https://github.com/MillarHuang/cookiecutter-databricks-ml-pipeline-template.git" -o .. -f project_slug=my-repo
 ```
 
 or 
